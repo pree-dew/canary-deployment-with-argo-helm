@@ -1,0 +1,24 @@
+prometheus:
+  prometheusSpec:
+    enableRemoteWriteReceiver: true
+    enableFeatures:
+        - remote-write-receiver
+    disablePathAppend: true
+    remoteWrite:
+    - url: "https://gamma-tsdb.last9.io/v1/metrics/bb79e5ffa58bcd258d882fd6d1b5e0eb/sender/last9/write"
+      basicAuth:
+          username:
+            name: kubepromsecret-write
+            key: username
+          password:
+            name: kubepromsecret-write
+            key: password
+    remoteRead:
+    - url: "https://read-gamma-tsdb.last9.io/hot/v1/metrics/bb79e5ffa58bcd258d882fd6d1b5e0eb/sender/last9"
+      basicAuth:
+          username:
+            name: kubepromsecret-read
+            key: username
+          password:
+            name: kubepromsecret-read
+            key: password

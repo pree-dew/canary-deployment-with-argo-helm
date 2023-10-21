@@ -1,0 +1,101 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels: &labels
+    app: {{ .Release.Name }}
+  annotations:
+    notifications.argoproj.io/subscribe.on-rollout-step-completed.webhook: "true"
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    canary:
+      canaryService: {{ .Release.Name }}-canary
+      stableService: {{ .Release.Name }}
+      canaryMetadata:
+        labels:
+          deployment: canary
+      stableMetadata:
+        labels:
+          deployment: stable
+      trafficRouting:
+        nginx:
+          stableIngress: {{ .Release.Name }}
+          additionalIngressAnnotations:
+            canary-by-header: X-Canary
+      steps:
+      steps:
+        - setWeight: 20
+        - pause: {duration: 10}
+        - analysis:
+            templates:
+            - templateName: canary-step-20-start
+        - setWeight: 40
+        - pause: {duration: 1m}
+        - analysis:
+            templates:
+            - templateName: canary-step-20-stop
+        - pause: {duration: 2m}
+        - analysis:
+            templates:
+            - templateName: canary-step-40-start
+        - setWeight: 60
+        - pause: {duration: 2m}
+        - analysis:
+            templates:
+            - templateName: canary-step-40-stop
+        - pause: {duration: 2m}
+        - analysis:
+            templates:
+            - templateName: canary-step-60-start
+        - setWeight: 80
+        - pause: {duration: 3m}
+        - analysis:
+            templates:
+            - templateName: canary-step-60-stop
+      {{- if .Values.prometheus.enabled }}
+      analysis:
+        templates:
+          - templateName: {{ .Release.Name }}
+        startingStep: 2
+      {{- end }}
+  selector:
+    matchLabels: *labels
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          env:
+            - name: HTTP_PORT
+              value: "8080"
+            - name: METRICS_PORT
+              value: "9090"
+            - name: KUBERNETES_NODE
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_POD
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KUBERNETES_DEPLOYMENT
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['deployment']
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 8080
+            - name: metrics
+              protocol: TCP
+              containerPort: 9090

@@ -1,0 +1,47 @@
+kind: AnalysisTemplate
+apiVersion: argoproj.io/v1alpha1
+metadata:
+  name: canary-step-80-start
+spec:
+  metrics:
+  - name: test
+    provider:
+      job:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+              - name: last9-event
+                image: curlimages/curl:7.73.0
+                command:
+                    - /bin/sh
+                    - -c
+                    - |
+                      curl -XPUT {{.Values.env.last9_url}} --data "{\"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"event_name\": \"{{ .Release.Name }}-80\", \"event_state\": \"start\", \"workspace\": \"sample-service\", \"namespace\": \"prod\", \"entity_type\": \"service\", \"data_source_name\": \"Test Alert - ap-south-1 (system)\"}" -H "X-LAST9-API-TOKEN: Bearer {{.Values.env.last9_token}}"  
+              restartPolicy: Never
+
+---
+kind: AnalysisTemplate
+apiVersion: argoproj.io/v1alpha1
+metadata:
+  name: canary-step-80-stop
+spec:
+  metrics:
+  - name: test
+    provider:
+      job:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+              - name: last9-event
+                image: curlimages/curl:7.73.0
+                command:
+                    - /bin/sh
+                    - -c
+                    - |
+                      curl -XPUT {{.Values.env.last9_url}} --data "{\"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"event_name\": \"{{ .Release.Name }}-80\", \"event_state\": \"stop\", \"workspace\": \"sample-service\", \"namespace\": \"prod\", \"entity_type\": \"service\", \"data_source_name\": \"Test Alert - ap-south-1 (system)\"}" -H "X-LAST9-API-TOKEN: Bearer {{.Values.env.last9_token}}"  
+              restartPolicy: Never
+
