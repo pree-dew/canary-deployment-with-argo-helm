@@ -9,20 +9,33 @@ spec:
   metrics:
     - name: success-share
       interval: 1m
-      successCondition: len(result) == 0 || result[0] >= 0.99
+      successCondition: len(result) == 0 || result[0] > 0
       failureLimit: 0
       provider:
         prometheus:
           address: {{ .Values.prometheus.address }}
           query: |
-            sum(rate(
-              sample_app_requests_count{service="{{ .Release.Name }}-canary", success="true"}[1m])
-            ) by (service)
-            /
-            sum(rate(
-              sample_app_requests_count{service="{{ .Release.Name }}-canary"}[1m])
-            ) by (service)
-            unless sum(rate(
-              sample_app_requests_count{service="{{ .Release.Name }}-canary"}[1m])
-            ) by (service) == 0
+            (sum(sample_app_requests_count{success="true"})
+            / sum(sample_app_requests_count{}))
+            > bool 0.99 - (
+              0.5 * sum(
+                sum_over_time(last9_domain_events{event_name="{{ .Release.Name }}-20", event_state="start"}[5m])
+                ) or 0.99)
+            or 
+
+            (sum(sample_app_requests_count{success="true"})
+            / sum(sample_app_requests_count{}))
+            > bool 0.99 - (
+              0.3 * sum(
+                sum_over_time(last9_domain_events{event_name="{{ .Release.Name }}-40", event_state="start"}[5m])
+              ) or 0.99)
+
+            or 
+
+            (sum(sample_app_requests_count{success="true"}[4m])
+            / sum(sample_app_requests_count{}))
+            > bool 0.99 - (
+              0.1 * sum(
+                sum_over_time(last9_domain_events{event_name="{{ .Release.Name }}-60", event_state="start"}[5m])
+            ) or 0.99)
 {{- end }}
