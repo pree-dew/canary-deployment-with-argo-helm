@@ -1,3 +1,9 @@
+## Description
+
+This repository contains code examples for tracking canary deployment using ArgoCD and [Levitate](https://last9.io/levitate-tsdb).
+
+Read the complete story here https://last9.io/blog/real-time-canary-deployment-tracking-with-argo-cd-levitate/
+
 ### Install of few packages
 ```
 brew install kind kubectl argoproj/tap/kubectl-argo-rollouts helm k6
